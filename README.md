@@ -7,8 +7,9 @@
 ![GDPR Ready](https://img.shields.io/badge/GDPR-Compliant%20Tool-green)
 
 A powerful automated scanner that helps websites maintain GDPR compliance through continuous monitoring and detailed reporting. Perfect for developers, site administrators, and privacy-conscious organizations!
-
+### Dashboard Preview
 ![Dashboard Preview](images/main.png)
+### PDF Report Preview
 ![PDF Report Preview](images/report.png)
 
 ## 🌟 Key Features
