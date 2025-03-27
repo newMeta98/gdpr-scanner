@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard - GDPR Compliance Scanner</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">GDPR Scanner</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h1 class="mb-4">Welcome, {{ current_user.username }}</h1>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Quick Scan</h5>
+                        <form id="scanForm">
+                            <div class="mb-3">
+                                <input type="url" class="form-control" placeholder="Enter URL (e.g., https://example.com)" required>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="emailReport">
+                                <label class="form-check-label" for="emailReport">Email me the report</label>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Scan Now</button>
+                        </form>
+                        <div id="scanResult" class="mt-3"></div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Schedule Scans</h5>
+                        <form id="scheduleForm">
+                            <div class="mb-3">
+                                <input type="url" class="form-control" placeholder="Enter URL to monitor" required>
+                            </div>
+                            <div class="mb-3">
+                                <select class="form-select" required>
+                                    <option value="">Select frequency</option>
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Schedule</button>
+                        </form>
+                        <div id="scheduleResult" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Compliance Summary</h5>
+                        <canvas id="complianceChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Scheduled Scans</h5>
+                {% if scheduled_scans %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>URL</th>
+                                <th>Frequency</th>
+                                <th>Next Scan</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for scan in scheduled_scans %}
+                            <tr>
+                                <td>{{ scan.url }}</td>
+                                <td>{{ scan.frequency }}</td>
+                                <td>{{ scan.next_scan.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger cancel-scan" data-id="{{ scan.id }}">Cancel</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p>No scheduled scans</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <h2 class="mb-3">Recent Scans</h2>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>URL</th>
+                        <th>Date</th>
+                        <th>HTTPS</th>
+                        <th>Privacy</th>
+                        <th>Cookies</th>
+                        <th>Trackers</th>
+                        <th>Forms</th>
+                        <th>Consent</th>
+                        <th>Report</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for scan in scans %}
+                    <tr>
+                        <td>{{ scan.url }}</td>
+                        <td>{{ scan.scan_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>{% if scan.has_https %}✅{% else %}❌{% endif %}</td>
+                        <td>{% if scan.has_privacy_policy %}✅{% else %}❌{% endif %}</td>
+                        <td>{{ scan.cookies_found }}</td>
+                        <td>{{ scan.tracking_scripts }}</td>
+                        <td>{{ scan.data_forms_found }}</td>
+                        <td>{% if scan.consent_mechanism %}✅{% else %}❌{% endif %}</td>
+                        <td>
+                            {% if scan.report_path %}
+                            <a href="{{ url_for('get_report', scan_id=scan.id) }}" class="btn btn-sm btn-outline-primary">Download</a>
+                            {% else %}N/A{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <script>
+        // Chart for compliance summary
+        const ctx = document.getElementById('complianceChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['HTTPS', 'Privacy Policy', 'Consent', 'Forms Secured'],
+                datasets: [{
+                    label: 'Compliance Items',
+                    data: [
+                        {{ scans|selectattr('has_https')|list|length }},
+                        {{ scans|selectattr('has_privacy_policy')|list|length }},
+                        {{ scans|selectattr('consent_mechanism')|list|length }},
+                        {{ scans|rejectattr('data_forms_found', 'equalto', 0)|list|length }}
+                    ],
+                    backgroundColor: [
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(255, 206, 86, 0.2)',
+                        'rgba(153, 102, 255, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(153, 102, 255, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: {{ scans|length if scans else 1 }}
+                    }
+                }
+            }
+        });
+
+        // Scan form submission
+        document.getElementById('scanForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const url = e.target.querySelector('input').value;
+            const emailReport = e.target.querySelector('#emailReport').checked;
+            const resultDiv = document.getElementById('scanResult');
+            
+            resultDiv.innerHTML = '<div class="alert alert-info">Scanning website, please wait...</div>';
+            
+            try {
+                const response = await fetch('/scan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `url=${encodeURIComponent(url)}&email_report=${emailReport}`
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    let html = `<div class="alert alert-success">
+                        <h5>Scan Results for ${data.data.url}</h5>
+                        <ul>
+                            <li>HTTPS: ${data.data.has_https ? '✅' : '❌'}</li>
+                            <li>Privacy Policy: ${data.data.has_privacy_policy ? '✅' : '❌'}</li>
+                            <li>Cookies found: ${data.data.cookie_details.length}</li>
+                            <li>Tracking scripts: ${data.data.tracking_details.length}</li>
+                            <li>Data collection forms: ${data.data.data_forms.length}</li>
+                            <li>Consent mechanism: ${data.data.consent_mechanism ? '✅' : '❌'}</li>
+                        </ul>
+                        <a href="/report/${data.scan_id}" class="btn btn-primary">Download Report</a>
+                        ${data.email_sent ? '<p class="mt-2 text-success">Report sent to your email</p>' : ''}
+                    </div>`;
+                    
+                    resultDiv.innerHTML = html;
+                    window.location.reload(); // Refresh to show new scan in history
+                } else {
+                    resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            }
+        });
+
+        // Schedule form submission
+        document.getElementById('scheduleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const url = e.target.querySelector('input').value;
+            const frequency = e.target.querySelector('select').value;
+            const resultDiv = document.getElementById('scheduleResult');
+            
+            resultDiv.innerHTML = '<div class="alert alert-info">Scheduling scan...</div>';
+            
+            try {
+                const response = await fetch('/schedule', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `url=${encodeURIComponent(url)}&frequency=${frequency}`
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<div class="alert alert-success">
+                        Scan scheduled successfully. Next scan: ${data.next_scan}
+                    </div>`;
+                    window.location.reload();
+                } else {
+                    resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            }
+        });
+
+        // Cancel scheduled scan
+        document.querySelectorAll('.cancel-scan').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const scanId = this.getAttribute('data-id');
+                if (confirm('Are you sure you want to cancel this scheduled scan?')) {
+                    try {
+                        const response = await fetch(`/schedule/${scanId}`, {
+                            method: 'DELETE'
+                        });
+                        if (response.ok) {
+                            window.location.reload();
+                        }
+                    } catch (error) {
+                        alert('Error cancelling scan');
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

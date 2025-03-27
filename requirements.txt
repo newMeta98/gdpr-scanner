@@ -1,0 +1,10 @@
+Flask
+beautifulsoup4
+requests
+pdfkit
+Flask-SQLAlchemy
+Flask-Login
+Flask-APScheduler
+pyOpenSSL
+email-validator
+wkhtmltopdf

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GDPR Compliance Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; }
+        h1 { color: #2c3e50; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .section { margin-bottom: 20px; }
+        .positive { color: green; }
+        .negative { color: red; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>GDPR Compliance Report</h1>
+        <p>Generated on {{ data.scan_date }}</p>
+    </div>
+
+    <div class="section">
+        <h2>Website Information</h2>
+        <p><strong>URL:</strong> {{ data.url }}</p>
+    </div>
+
+    <div class="section">
+        <h2>Security</h2>
+        <p><strong>HTTPS:</strong> 
+            {% if data.has_https %}
+                <span class="positive">Enabled (Secure)</span>
+            {% else %}
+                <span class="negative">Disabled (Not Secure)</span>
+            {% endif %}
+        </p>
+        <p><strong>SSL Certificate Valid:</strong> 
+            {% if data.ssl_valid %}
+                <span class="positive">Yes</span>
+            {% else %}
+                <span class="negative">No</span>
+                {% if data.ssl_details.error %}
+                    <br>Error: {{ data.ssl_details.error }}
+                {% endif %}
+            {% endif %}
+        </p>
+    </div>
+
+    <div class="section">
+        <h2>Cookies</h2>
+        <p><strong>Total Cookies Found:</strong> {{ data.cookies|length }}</p>
+        {% if data.cookies %}
+        <table>
+            <tr><th>Cookie</th></tr>
+            {% for cookie in data.cookies %}
+            <tr><td>{{ cookie }}</td></tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p>No cookies detected in initial scan.</p>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>Tracking Scripts</h2>
+        <p><strong>Total Tracking Scripts Found:</strong> {{ data.tracking_scripts|length }}</p>
+        {% if data.tracking_scripts %}
+        <table>
+            <tr><th>Tracking Script URL</th></tr>
+            {% for script in data.tracking_scripts %}
+            <tr><td>{{ script }}</td></tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p>No common tracking scripts detected.</p>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>Privacy Policy</h2>
+        <p><strong>Privacy Policy Detected:</strong> 
+            {% if data.has_privacy_policy %}
+                <span class="positive">Yes</span>
+            {% else %}
+                <span class="negative">No</span>
+            {% endif %}
+        </p>
+        <p>Note: This checks for common terms like "privacy", "datenschutz", etc. in links.</p>
+    </div>
+
+    <div class="footer">
+        <p>This report provides a basic GDPR compliance scan. For a comprehensive assessment, 
+        consult with a legal professional specializing in data protection laws.</p>
+    </div>
+</body>
+</html>
